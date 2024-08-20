@@ -6,7 +6,7 @@ set -xe
 # COOKBOOK_NAME: Name of the cookbook
 # COOKBOOK_CONDA_ENV: Name of the conda environment
 # IS_GPU_JOB: Boolean value to indicate if the job is a GPU job. If true, it will load the CUDA module
-export GIT_REPO_URL="https://github.com/In-For-Disaster-Analytics/Cookbook-Jupyter-Template.git"
+export GIT_REPO_URL="https://github.com/OpenDroneMap/WebODM --config core.autocrlf=input --depth 1"
 export COOKBOOK_NAME="cookbook-template-jupyter"
 export COOKBOOK_CONDA_ENV="example"
 IS_GPU_JOB=false
@@ -77,11 +77,11 @@ function export_repo_variables() {
 function clone_cookbook_on_workspace() {
 	DATE_FILE_SUFFIX=$(date +%Y%m%d%H%M%S)
 	if [ ! -d "$COOKBOOK_WORKSPACE_DIR" ]; then
-		git clone ${GIT_REPO_URL} --branch ${GIT_BRANCH} ${COOKBOOK_WORKSPACE_DIR}
+		git clone ${GIT_REPO_URL} 
 	else
 		if [ ${DOWNLOAD_LATEST_VERSION} = "true" ]; then
 			mv ${COOKBOOK_WORKSPACE_DIR} ${COOKBOOK_WORKSPACE_DIR}-${DATE_FILE_SUFFIX}
-			git clone ${GIT_REPO_URL} --branch ${GIT_BRANCH} ${COOKBOOK_WORKSPACE_DIR}
+			git clone ${GIT_REPO_URL} 
 		fi
 	fi
 }
@@ -160,37 +160,12 @@ function create_jupyter_configuration {
 }
 
 function run_jupyter() {
-	conda activate ${COOKBOOK_CONDA_ENV}
-	NB_SERVERDIR=$HOME/.jupyter
-	JUPYTER_SERVER_APP="ServerApp"
-	JUPYTER_BIN="jupyter-lab"
-	JUPYTER_ARGS="--certfile=$(cat ${TAP_CERTFILE}) --config=${TAP_JUPYTER_CONFIG}"
-	JUPYTER_LOGFILE=${NB_SERVERDIR}/${NODE_HOSTNAME_PREFIX}.log
-	mkdir -p ${NB_SERVERDIR}
-	touch $JUPYTER_LOGFILE
-	nohup ${JUPYTER_BIN} ${JUPYTER_ARGS} &>${JUPYTER_LOGFILE} &
-	JUPYTER_PID=$!
-	# verify jupyter is up. if not, give one more try, then bail
-	if ! $(ps -fu ${USER} | grep ${JUPYTER_BIN} | grep -qv grep); then
-		# sometimes jupyter has a bad day. give it another chance to be awesome.
-		echo "TACC: first jupyter launch failed. Retrying..."
-		nohup ${JUPYTER_BIN} ${JUPYTER_ARGS} &>${JUPYTER_LOGFILE} &
-	fi
-
-	if ! $(ps -fu ${USER} | grep ${JUPYTER_BIN} | grep -qv grep); then
-		# jupyter will not be working today. sadness.
-		echo "TACC: ERROR - jupyter failed to launch"
-		echo "TACC: ERROR - this is often due to an issue in your python or conda environment"
-		echo "TACC: ERROR - jupyter logfile contents:"
-		cat ${JUPYTER_LOGFILE}
-		echo "TACC: job ${SLURM_JOB_ID} execution finished at: $(date)"
-		exit 1
-	fi
+	.WebODM/webodm.sh start
 
 }
 
 function port_fowarding() {
-	LOCAL_PORT=5902
+	LOCAL_PORT=8000
 	# Disable exit on error so we can check the ssh tunnel status.
 	set +e
 	for i in $(seq 2); do
@@ -210,7 +185,7 @@ function port_fowarding() {
 }
 
 function send_url_to_webhook() {
-	JUPYTER_URL="https://${NODE_HOSTNAME_DOMAIN}:${LOGIN_PORT}/?token=${TAP_TOKEN}"
+	JUPYTER_URL="https://${NODE_HOSTNAME_DOMAIN}:${LOGIN_PORT}"
 	INTERACTIVE_WEBHOOK_URL="${_webhook_base_url}"
 	# Wait a few seconds for jupyter to boot up and send webhook callback url for job ready notification.
 	# Notification is sent to _INTERACTIVE_WEBHOOK_URL, e.g. https://3dem.org/webhooks/interactive/
@@ -283,7 +258,6 @@ load_tap_functions
 get_tap_certificate
 get_tap_token
 create_jupyter_configuration
-handle_installation
 run_jupyter
 port_fowarding
 send_url_to_webhook
