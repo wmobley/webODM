@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Prepare directories
 WORKDIR /code
-RUN git clone https://github.com/OpenDroneMap/ODM.git
+RUN git clone git://github.com/OpenDroneMap/ODM.git
 # Copy everything
 COPY . ./
 
