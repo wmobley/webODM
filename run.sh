@@ -77,11 +77,11 @@ function export_repo_variables() {
 function clone_cookbook_on_workspace() {
 	DATE_FILE_SUFFIX=$(date +%Y%m%d%H%M%S)
 	if [ ! -d "$COOKBOOK_WORKSPACE_DIR" ]; then
-		git clone ${GIT_REPO_URL}  --config core.autocrlf=input --depth 1
+		git clone ${GIT_REPO_URL}  --config core.autocrlf=input --depth 1 ${COOKBOOK_WORKSPACE_DIR}
 	else
 		if [ ${DOWNLOAD_LATEST_VERSION} = "true" ]; then
 			mv ${COOKBOOK_WORKSPACE_DIR} ${COOKBOOK_WORKSPACE_DIR}-${DATE_FILE_SUFFIX}
-			git clone ${GIT_REPO_URL}  --config core.autocrlf=input --depth 1
+			git clone ${GIT_REPO_URL}  --config core.autocrlf=input --depth 1 ${COOKBOOK_WORKSPACE_DIR}
 		fi
 	fi
 }
