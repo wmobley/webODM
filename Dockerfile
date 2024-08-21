@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.3.0-runtime-ubuntu22.04
+FROM opendronemap/odm
 
 LABEL maintainer="TACC-ACI-WMA <wma_prtl@tacc.utexas.edu>"
 

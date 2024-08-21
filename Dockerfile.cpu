@@ -1,65 +1,55 @@
-FROM ubuntu:22.04
+FROM ubuntu:21.04 AS builder
 
-LABEL maintainer="Maximiliano Osorio <maxiosorio@gmail.com>"
+# Env variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONPATH="$PYTHONPATH:/code/SuperBuild/install/lib/python3.9/dist-packages:/code/SuperBuild/install/lib/python3.8/dist-packages:/code/SuperBuild/install/bin/opensfm" \
+    LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/code/SuperBuild/install/lib"
 
-EXPOSE 8888
+# Prepare directories
+WORKDIR /code
 
-ENV DEBIAN_FRONTEND noninteractive
+# Copy everything
+COPY . ./
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    fonts-liberation \
-    git \
-    locales \
-    pandoc \
-    python3 \
-    python3-pip \
-    wget \
-    unzip \
-    vim \
-    build-essential \
-    ssh \
-    rsync \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-    locale-gen
+# Use old-releases for 21.04
+RUN printf "deb http://old-releases.ubuntu.com/ubuntu/ hirsute main restricted\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-updates main restricted\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute universe\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-updates universe\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute multiverse\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-updates multiverse\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-backports main restricted universe multiverse" > /etc/apt/sources.list
 
-RUN pip install --upgrade --no-cache-dir \
-    pip \
-    setuptools \
-    wheel
+# Run the build
+RUN PORTABLE_INSTALL=YES bash configure.sh install
 
-# Add container user and group
-ARG NB_USER=jovyan
-ARG NB_UID=1000
-ARG NB_GID=100
+# Clean Superbuild
+RUN bash configure.sh clean
 
-# Configure environment
-ENV SHELL=/bin/bash \
-    NB_USER="${NB_USER}" \
-    NB_UID=${NB_UID} \
-    NB_GID=${NB_GID} \
-    NB_HOME="/home/${NB_USER}" \
-    LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8
+### END Builder
 
-# Enable prompt color in the skeleton .bashrc before creating the default NB_USER
-RUN sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' /etc/skel/.bashrc
+### Use a second image for the final asset to reduce the number and
+# size of the layers.
+FROM ubuntu:21.04
 
-# Create NB_USER with UID=NB_UID and GID=NB_GID
-RUN useradd --no-log-init --create-home --shell /bin/bash --uid "${NB_UID}" --gid "${NB_GID}" "${NB_USER}"
+# Env variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONPATH="$PYTHONPATH:/code/SuperBuild/install/lib/python3.9/dist-packages:/code/SuperBuild/install/lib/python3.8/dist-packages:/code/SuperBuild/install/bin/opensfm" \
+    LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/code/SuperBuild/install/lib" \
+    PDAL_DRIVER_PATH="/code/SuperBuild/install/bin"
 
-COPY run.sh /tapis/run.sh
+WORKDIR /code
 
-RUN chmod +x /tapis/run.sh
+# Copy everything we built from the builder
+COPY --from=builder /code /code
 
-USER ${NB_UID}
+# Copy the Python libraries installed via pip from the builder
+COPY --from=builder /usr/local /usr/local
 
-# Setup work directory
-RUN mkdir "${NB_HOME}/work"
+# Use old-releases for 21.04
+RUN printf "deb http://old-releases.ubuntu.com/ubuntu/ hirsute main restricted\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-updates main restricted\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute universe\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-updates universe\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute multiverse\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-updates multiverse\ndeb http://old-releases.ubuntu.com/ubuntu/ hirsute-backports main restricted universe multiverse" > /etc/apt/sources.list
 
-WORKDIR "${NB_HOME}"
+# Install shared libraries that we depend on via APT, but *not*
+# the -dev packages to save space!
+RUN bash configure.sh installruntimedepsonly \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+  && bash run.sh --help \
+  && bash -c "eval $(python3 /code/opendm/context.py) && python3 -c 'from opensfm import io, pymap'"
 
-ENTRYPOINT [ "/tapis/run.sh" ]
+# Entry point
+ENTRYPOINT ["python3", "/code/run.py"]
