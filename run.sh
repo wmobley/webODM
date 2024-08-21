@@ -6,7 +6,7 @@ set -xe
 # COOKBOOK_NAME: Name of the cookbook
 # COOKBOOK_CONDA_ENV: Name of the conda environment
 # IS_GPU_JOB: Boolean value to indicate if the job is a GPU job. If true, it will load the CUDA module
-export GIT_REPO_URL="https://github.com/OpenDroneMap/WebODM --config core.autocrlf=input --depth 1"
+export GIT_REPO_URL="https://github.com/OpenDroneMap/WebODM"
 export COOKBOOK_NAME="WebODM"
 export COOKBOOK_CONDA_ENV="example"
 IS_GPU_JOB=false
@@ -77,11 +77,11 @@ function export_repo_variables() {
 function clone_cookbook_on_workspace() {
 	DATE_FILE_SUFFIX=$(date +%Y%m%d%H%M%S)
 	if [ ! -d "$COOKBOOK_WORKSPACE_DIR" ]; then
-		git clone ${GIT_REPO_URL} 
+		git clone ${GIT_REPO_URL}  --config core.autocrlf=input --depth 1
 	else
 		if [ ${DOWNLOAD_LATEST_VERSION} = "true" ]; then
 			mv ${COOKBOOK_WORKSPACE_DIR} ${COOKBOOK_WORKSPACE_DIR}-${DATE_FILE_SUFFIX}
-			git clone ${GIT_REPO_URL} 
+			git clone ${GIT_REPO_URL}  --config core.autocrlf=input --depth 1
 		fi
 	fi
 }
@@ -160,7 +160,7 @@ function create_jupyter_configuration {
 }
 
 function run_jupyter() {
-	$COOKBOOK_REPOSITORY_DIR/WebODM/webodm.sh start
+	$COOKBOOK_REPOSITORY_DIR/webodm.sh start
 
 }
 
