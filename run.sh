@@ -7,7 +7,7 @@ set -xe
 # COOKBOOK_CONDA_ENV: Name of the conda environment
 # IS_GPU_JOB: Boolean value to indicate if the job is a GPU job. If true, it will load the CUDA module
 export GIT_REPO_URL="https://github.com/OpenDroneMap/WebODM --config core.autocrlf=input --depth 1"
-export COOKBOOK_NAME="cookbook-template-jupyter"
+export COOKBOOK_NAME="WebODM"
 export COOKBOOK_CONDA_ENV="example"
 IS_GPU_JOB=false
 
@@ -160,7 +160,7 @@ function create_jupyter_configuration {
 }
 
 function run_jupyter() {
-	.WebODM/webodm.sh start
+	$COOKBOOK_REPOSITORY_DIR/WebODM/webodm.sh start
 
 }
 
